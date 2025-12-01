@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AQI Dashboard - {{ country }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        .metric-label {
+            color: #999;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .metric-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-unit {
+            color: #999;
+            font-size: 0.9em;
+        }
+
+        .aqi-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .badge-good {
+            background-color: #10b981;
+        }
+
+        .badge-moderate {
+            background-color: #f59e0b;
+        }
+
+        .badge-sensitive {
+            background-color: #f97316;
+        }
+
+        .badge-unhealthy {
+            background-color: #ef4444;
+        }
+
+        .badge-very-unhealthy {
+            background-color: #991b1b;
+        }
+
+        .badge-hazardous {
+            background-color: #7c2d12;
+        }
+
+        .charts-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 1.5em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .chart-container {
+            width: 100%;
+            min-height: 500px;
+            margin-bottom: 30px;
+        }
+
+        .ranking-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .ranking-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .ranking-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .ranking-table td {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .ranking-table tr:hover {
+            background-color: #f9fafb;
+        }
+
+        .rank-number {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .station-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .pm25-badge {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: #333;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-container {
+                min-height: 300px;
+            }
+        }
+    </style>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🌍 {{ country }} - Air Quality Dashboard</h1>
+            <p>Real-time PM2.5 Monitoring & 7-Day Forecast</p>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Current PM2.5</div>
+                <div class="metric-value" style="color: {{ aqi_color }};">{{ current_pm25 }}</div>
+                <div class="metric-unit">μg/m³</div>
+                <span
+                    class="aqi-badge badge-{{ current_aqi | replace('Hazardous', 'hazardous') | replace('Very Unhealthy', 'very-unhealthy') | replace('Unhealthy', 'unhealthy') | replace('Sensitive', 'sensitive') | replace('Moderate', 'moderate') | replace('Good', 'good') | lower }}">
+                    {{ aqi_status }}
+                </span>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Current AQI</div>
+                <div class="metric-value" style="color: {{ aqi_color }};">{{ current_aqi }}</div>
+                <div class="metric-unit">Index</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Average PM2.5 (24h)</div>
+                <div class="metric-value">{{ avg_pm25 }}</div>
+                <div class="metric-unit">μg/m³</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-label">Average AQI (24h)</div>
+                <div class="metric-value">{{ avg_aqi }}</div>
+                <div class="metric-unit">Index</div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-section">
+            <div class="chart-title">📈 PM2.5 Trends & Forecast</div>
+            <div class="chart-container">
+                {{ pm25_chart | safe }}
+            </div>
+        </div>
+
+        <!-- Ranking Section -->
+        <div class="ranking-section">
+            <div class="chart-title">🏆 Top 10 Most Polluted Stations</div>
+            <div class="chart-container">
+                {{ ranking_chart | safe }}
+            </div>
+
+            <!-- Ranking Table (Optional) -->
+            <h3 style="margin-top: 30px; color: #333;">Detailed Station Ranking</h3>
+            <table class="ranking-table">
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Station Name</th>
+                        <th>PM2.5</th>
+                        <th>AQI</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="rankingTableBody">
+                    {% for station in ranking_data[:10] %}
+                    <tr>
+                        <td class="rank-number">#{{ loop.index }}</td>
+                        <td class="station-name">{{ station.name }}</td>
+                        <td><span class="pm25-badge">{{ "%.2f"|format(station.value) }} μg/m³</span></td>
+                        <td><strong>{{ pm25_to_aqi_value(station.value) }}</strong></td>
+                        <td>{{ get_aqi_status(station.value) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>Data powered by OpenAQ API | Forecasts based on Linear Regression ML Model</p>
+            <p style="font-size: 0.9em; margin-top: 10px;">Last updated: {{ now.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+        </div>
+    </div>
+</body>
+
+</html>

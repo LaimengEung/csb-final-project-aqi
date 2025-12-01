@@ -1,0 +1,57 @@
+Documentation 
+
+.locations - Find Monitoring Stations
+    # What you get from each location:
+    location = locations.results[0]
+    location.id              # Unique identifier (use this to get measurements)
+    location.name            # Station name (e.g., "AUPP Liger Leadership Academy")
+    location.locality        # City/area name
+    location.country.name    # Country name
+    location.country.id      # Country ID
+    location.coordinates     # Latitude/longitude object
+        location.coordinates.latitude
+        location.coordinates.longitude
+    location.datetime_first  # When this station started reporting
+    location.datetime_last   # Most recent measurement time
+    location.parameters      # List of pollutants measured here
+
+        When to use: Every time you want to search for monitoring stations 
+                    by location, country, or coordinates.   
+
+.measurements - Get Actual Air Quality Data
+    # What you get from each measurement:
+    measurement = measurements.results[0]
+    measurement.value           # The actual reading (e.g., 35.2)
+    measurement.parameter.name  # Pollutant name (e.g., "pm25")
+    measurement.parameter.id    # Pollutant ID
+    measurement.datetime        # When it was measured
+    measurement.location.name   # Station name
+    measurement.coordinates     # Where it was measured
+
+        When to use: When you want to get the actual pollution data to analyze or visualize.
+
+.countries - List All countries
+    country = countries.results[0]
+    country.id       # Country ID (needed for locations.list)
+    country.name     # Country name (e.g., "United States")
+    country.code     # ISO code (e.g., "US")
+
+        When to use: When you want to let users search by country name, or to build a list of available countries.
+
+.parameters - List All Pollutants
+    parameter = parameters.results[0]
+    parameter.id             # Parameter ID (e.g., 2 for PM2.5)
+    parameter.name           # Parameter name (e.g., "pm25")
+    parameter.display_name   # Human-readable name (e.g., "PM2.5")
+    parameter.units          # Measurement unit (e.g., "µg/m³")
+    Commonly used parameter IDs:
+
+    2 = PM2.5 (fine particulate matter)
+    1 = PM10 (coarse particulate matter)
+    5 = NO2 (nitrogen dioxide)
+    3 = O3 (ozone)
+    4 = SO2 (sulfur dioxide)
+    6 = CO (carbon monoxide)
+
+        When to use: When you want to let users choose which pollutant to visualize, 
+                    or to display all available pollutants for a location.
