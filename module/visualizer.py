@@ -56,13 +56,13 @@ def create_hourly_line_chart(hourly_df, metric='pm25'):
     if metric == 'pm25':
         values = df_plot['value'].tolist()
         y_title = 'PM2.5 (μg/m³)'
-        hover_template = '<b>%{x}</b><br>PM2.5: %{y:.2f} μg/m³<extra></extra>' # %{}: insert data; <extra>:remove default hover text
+        hover_template = '<b>%{x}</b><br>PM2.5: %{y:.2f} μg/m³>' # %{}: insert data; <extra>:remove default hover text
         colors = [get_aqi_color(aqi) for aqi in df_plot['aqi']]
 
     else:  # aqi
         values = df_plot['aqi'].tolist()
         y_title = 'AQI (US)'
-        hover_template = '<b>%{x}</b><br>AQI: %{y}<extra></extra>'
+        hover_template = '<b>%{x}</b><br>AQI: %{y}>'
         colors = [get_aqi_color(aqi) for aqi in values]
     
     fig = go.Figure()
@@ -119,12 +119,12 @@ def create_prediction_column_chart(prediction_dates, prediction_values, predicti
     if metric == 'pm25':
         values = prediction_values
         y_title = 'PM2.5 (μg/m³)'
-        hover_template = '<b>%{x}</b><br>Predicted PM2.5: %{y:.2f} μg/m³<extra></extra'
+        hover_template = '<b>%{x}</b><br>Predicted PM2.5: <b>%{y:.2f}</b> μg/m³'
 
     else:
         values = prediction_aqi
         y_title = 'AQI (US)'
-        hover_template = '<b>%{x}</b><br>Predicted AQI: %{y:.2f} μg/m³<extra></extra'
+        hover_template = '<b>%{x}</b><br>Predicted AQI: <b>%{y:.2f}</b> μg/m³'
     
     colors = [get_aqi_color(aqi) for aqi in prediction_aqi]
 
