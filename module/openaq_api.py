@@ -124,7 +124,7 @@ def get_daily_data_by_country(selected_country, country_id, days=1): # for one d
 
     return df_agg # returns: sth like 23 2025-12-01 15:00:00+07:00  15.024756
 
-def get_historic_data_by_country(selected_country, country_id, days=1): 
+def get_historic_data_by_country(selected_country, country_id, days=30): 
     cache_file = os.path.join(CACHE_DIR, f'cache_{country_id}_{days}d.json')
     
     # 1. Check Cache
@@ -143,7 +143,7 @@ def get_historic_data_by_country(selected_country, country_id, days=1):
     locations = client.locations.list(
         countries_id=country_id,
         parameters_id=2, # 2: PM2.5
-        limit=60
+        limit=20
     )
     
     datefrom = datetime.now() - timedelta(days=days) 
@@ -154,6 +154,7 @@ def get_historic_data_by_country(selected_country, country_id, days=1):
 
     location_count = 0
     for location in locations.results:
+        # print(f"Found {location.name}") # for debugging
         if location_count >= 10:  # Stop after 10 locations
             break
 
@@ -162,10 +163,11 @@ def get_historic_data_by_country(selected_country, country_id, days=1):
             for sensor in location.sensors:
                 if sensor.parameter.id == 2: # id 2 in PM2.5 (we only take PM2.5)
                     sensor_id = sensor.id
+                    # print(f"Found sensor: {sensor_id}")
                     break
 
             if sensor_id:
-                page = 1
+                page = 1 # Pagination
                 while True:
                     try:
                         measurements = client.measurements.list(
@@ -177,14 +179,17 @@ def get_historic_data_by_country(selected_country, country_id, days=1):
 
                         if not measurements.results:
                             break
-
+                        
+                        # print(f"Got {location.name} measurements!")
                         for m in measurements.results:
                             available_results.append({
-                                'name': location.name,
+                                # 'name': location.name,
                                 'time_to': m.period.datetime_to.local,
                                 'value': m.value
                             })
+                        # print(f"Appended {location.name} at page {page}!")
 
+                        page += 1
                         # Safety break
                         if page > 200:
                             break 
@@ -192,6 +197,7 @@ def get_historic_data_by_country(selected_country, country_id, days=1):
                         print(f"Error fetching page {page} for location {location.name}: {e}")
                         break
                 location_count += 1
+                # print(f"Done {location_count} station")
                 
         except Exception as e:
             print(f"Error fetching for location {location.id}: {e}")
@@ -227,56 +233,79 @@ def get_historic_data_by_country(selected_country, country_id, days=1):
     return df_agg # returns: sth like 23 2025-12-01 15:00:00+07:00  15.024756
 
 def get_ranking_by_country(country_id):
-    locations = client.locations.list(
-        countries_id=country_id,
-        parameters_id=2,
-        limit=60
-    )
-
-    date_from = datetime.now() - timedelta(days=1)
+    cache_file = os.path.join(CACHE_DIR, f'cache_{country_id}_ranking.json')
     
-    available_results = []
+    if os.path.exists(cache_file):
+        print(f"Loading data from cache: {cache_file}")
+        try:
+            df = pd.read_json(cache_file, orient='records') # orient='records':  the DataFrame is converted into a list of dictionaries, where each dictionary represents a row in the DataFrame.
+            return df
+        except Exception as e:
+            print(f"Error loading cache: {e}")
 
-    for location in locations.results:
-        sensor_id = location.sensors[1].id
-        measurements = client.measurements.list(
-            sensors_id=sensor_id,
-            datetime_from=date_from
+    else:
+        locations = client.locations.list(
+            countries_id=country_id,
+            parameters_id=2,
+            limit=60
         )
 
-        if measurements.results:
-            latest = measurements.results[-1]
-            formatted_time_from = pd.to_datetime(latest.period.datetime_from.local).strftime("%Y-%m-%d %H:%M")
-            formatted_time_to = pd.to_datetime(latest.period.datetime_to.local).strftime("%Y-%m-%d %H:%M")
+        date_from = datetime.now() - timedelta(hours=1)
+        
+        available_results = []
 
-            available_results.append({
-                'name': location.name,
-                'value': latest.value,
-                'units': latest.parameter.units, # Will no need unit when we work on AQI!!!
-                'time_from': formatted_time_from,
-                'time_to': formatted_time_to
-            })
+        location_count = 0
+        for location in locations.results:
+            if location_count >= 10:
+                break
 
-    available_results.sort(key=lambda x: x['value'], reverse=True)
+            sensor_id = None
+            for sensor in location.sensors:
+                if sensor.parameter.id == 2: # id 2 in PM2.5 (we only take PM2.5)
+                    sensor_id = sensor.id
+                    break
 
-    # print("\n--- Air Quality Ranking (Highest PM2.5) ---")
-    # for index, result in enumerate(available_results, 1):
-    #     print(f"{index}. {result['name']}: {result['value']:.2f} {result['units']} at {result['time']}")
+            measurements = client.measurements.list(
+                sensors_id=sensor_id,
+                datetime_from=date_from
+            )
 
-    df = pd.DataFrame([
-        {
-            'time_from': result['time_from'],
-            'time_to': result['time_to'],
-            'name': result['name'],
-            'value': result['value'],
-            'units': result['units']
-        }
-        for result in available_results
-    ])
-    df['aqi'] = df['value'].apply(lambda x: aqi.to_aqi([(aqi.POLLUTANT_PM25, x)], algo=aqi.ALGO_EPA))
+            if measurements.results:
+                latest = measurements.results[-1]
+                # formatted_time_from = pd.to_datetime(latest.period.datetime_from.local).strftime("%Y-%m-%d %H:%M")
+                formatted_time_to = pd.to_datetime(latest.period.datetime_to.local).strftime("%Y-%m-%d %H:%M")
 
-    return df
+                available_results.append({
+                    'name': location.name,
+                    'value': latest.value,
+                    # 'units': latest.parameter.units, # Will no need unit when we work on AQI!!!
+                    # 'time_from': formatted_time_from,
+                    'time_to': formatted_time_to
+                })
+                location_count += 1
 
+        available_results.sort(key=lambda x: x['value'], reverse=True)
+
+        # print("\n--- Air Quality Ranking (Highest PM2.5) ---")
+        # for index, result in enumerate(available_results, 1):
+        #     print(f"{index}. {result['name']}: {result['value']:.2f} {result['units']} at {result['time']}")
+
+        df = pd.DataFrame([
+            {
+                'time_to': result['time_to'],
+                'name': result['name'],
+                'value': result['value'],
+            }
+            for result in available_results
+        ])
+        df['aqi'] = df['value'].apply(lambda x: aqi.to_aqi([(aqi.POLLUTANT_PM25, x)], algo=aqi.ALGO_EPA))
+
+        if not os.path.exists(CACHE_DIR):
+            os.makedirs(CACHE_DIR)
+
+        df.to_json(cache_file, orient='records', date_format='iso')
+
+        return df
 
 def get_kpi_card(selected_country, df):
     average_value = df['value'].mean().mean()
@@ -304,5 +333,5 @@ def get_kpi_card(selected_country, df):
     print("╚══════════════════════════════════════════╝\n")
 
 # print(get_daily_data_by_country('Cambodia', 57, 1))
-# print(get_historic_data_by_country('Cambodia', 57, 365))
+# print(get_historic_data_by_country('Cambodia', 57, 30))
 # print(get_ranking_by_country(57))

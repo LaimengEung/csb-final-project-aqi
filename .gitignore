@@ -1,1 +1,4 @@
 .env
+get_historic_data.py
+testing.py
+debugging.py
